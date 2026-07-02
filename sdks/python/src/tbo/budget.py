@@ -6,7 +6,6 @@ import logging
 import threading
 import time
 from enum import Enum
-from typing import Optional
 
 from pydantic import BaseModel, Field
 
@@ -24,15 +23,15 @@ class OnExceed(str, Enum):
 class BudgetConfig(BaseModel):
     """Configuration for budget enforcement."""
 
-    max_tokens: Optional[int] = None
-    max_cost_usd: Optional[float] = None
+    max_tokens: int | None = None
+    max_cost_usd: float | None = None
     period: BudgetPeriod = BudgetPeriod.DAILY
     warning_threshold: float = Field(default=0.8, ge=0.0, le=1.0)
     # Safety margin for output token estimation uncertainty
     safety_margin: float = Field(default=0.15, ge=0.0, le=0.5)
     # What to do when budget is exceeded
     on_exceed: OnExceed = OnExceed.BLOCK
-    fallback_model: Optional[str] = None
+    fallback_model: str | None = None
 
 
 class BudgetCheckResult(BaseModel):
@@ -40,8 +39,8 @@ class BudgetCheckResult(BaseModel):
 
     allowed: bool = True
     budget: AgentBudget
-    fallback_model: Optional[str] = None
-    reason: Optional[str] = None
+    fallback_model: str | None = None
+    reason: str | None = None
 
 
 class BudgetExceededError(Exception):
@@ -192,7 +191,7 @@ class BudgetManager:
 
             return budget
 
-    def get_budget(self, workspace: str, agent_id: str) -> Optional[AgentBudget]:
+    def get_budget(self, workspace: str, agent_id: str) -> AgentBudget | None:
         """Get current budget state for an agent."""
         key = f"{workspace}:{agent_id}"
         with self._lock:

@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Union
-
 from tbo.models import Provider
 
 
@@ -31,7 +29,7 @@ class TokenCounter:
                 self._encoder = tiktoken.get_encoding("cl100k_base")
         return self._encoder
 
-    def count(self, text: Union[str, list]) -> int:
+    def count(self, text: str | list) -> int:
         """Count tokens in text or message list.
 
         Args:

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import Optional
 
 from pydantic import BaseModel
 
@@ -30,7 +29,7 @@ class RoutingRule(BaseModel):
 
     name: str
     condition: dict  # Key-value pairs to match against call metadata
-    target_model: Optional[str] = None
+    target_model: str | None = None
     action: PolicyAction = PolicyAction.REROUTE
     priority: int = 0  # Higher = evaluated first
 
@@ -50,8 +49,8 @@ class PolicyDecision(BaseModel):
     action: PolicyAction
     original_model: str
     routed_model: str  # May differ from original if rerouted
-    rule_applied: Optional[str] = None
-    reason: Optional[str] = None
+    rule_applied: str | None = None
+    reason: str | None = None
 
 
 class PolicyEvaluator:

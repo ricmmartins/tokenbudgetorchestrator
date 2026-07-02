@@ -23,7 +23,7 @@ from __future__ import annotations
 
 import time
 from datetime import UTC, datetime
-from typing import Any, Optional
+from typing import Any
 
 from tbo.budget import BudgetConfig, BudgetExceededError, BudgetManager
 from tbo.models import DEFAULT_PRICING, ModelPricing, Provider, UsageRecord
@@ -42,14 +42,14 @@ class TBOClient:
     def __init__(
         self,
         provider: str,
-        api_key: Optional[str] = None,
+        api_key: str | None = None,
         workspace: str = "default",
         agent_id: str = "default",
-        budget: Optional[BudgetConfig] = None,
-        policies: Optional[list[Policy]] = None,
-        engine_url: Optional[str] = None,
-        metadata: Optional[dict] = None,
-        pricing: Optional[list[ModelPricing]] = None,
+        budget: BudgetConfig | None = None,
+        policies: list[Policy] | None = None,
+        engine_url: str | None = None,
+        metadata: dict | None = None,
+        pricing: list[ModelPricing] | None = None,
         **provider_kwargs: Any,
     ):
         """Initialize TBO wrapper.
@@ -96,7 +96,7 @@ class TBOClient:
         # Expose provider-compatible interface
         self.messages = _MessagesAPI(self)
 
-    def _create_provider_client(self, api_key: Optional[str], **kwargs: Any) -> Any:
+    def _create_provider_client(self, api_key: str | None, **kwargs: Any) -> Any:
         """Create the underlying LLM provider client."""
         if self._provider == Provider.ANTHROPIC:
             try:
@@ -164,7 +164,7 @@ class TBOClient:
         input_tokens: int,
         output_tokens: int,
         latency_ms: float,
-        policy_applied: Optional[str] = None,
+        policy_applied: str | None = None,
     ) -> None:
         """Post-call hook: record usage and emit telemetry."""
         total_tokens = input_tokens + output_tokens
@@ -219,7 +219,7 @@ class _MessagesAPI:
         model: str,
         messages: list,
         max_tokens: int = 1024,
-        metadata: Optional[dict] = None,
+        metadata: dict | None = None,
         **kwargs: Any,
     ) -> Any:
         """Create a message — with TBO budget governance applied transparently.

@@ -2,11 +2,9 @@
 
 from __future__ import annotations
 
-import asyncio
 import logging
 import queue
 import threading
-from typing import Optional
 
 from tbo.models import UsageRecord
 
@@ -25,7 +23,7 @@ class TelemetryCollector:
 
     def __init__(
         self,
-        engine_url: Optional[str] = None,
+        engine_url: str | None = None,
         batch_size: int = 10,
         flush_interval_seconds: float = 5.0,
         enabled: bool = True,
@@ -36,7 +34,7 @@ class TelemetryCollector:
         self._enabled = enabled
         self._queue: queue.Queue[UsageRecord] = queue.Queue(maxsize=10000)
         self._buffer: list[UsageRecord] = []
-        self._worker: Optional[threading.Thread] = None
+        self._worker: threading.Thread | None = None
         self._stop_event = threading.Event()
 
         if self._enabled and self._engine_url:

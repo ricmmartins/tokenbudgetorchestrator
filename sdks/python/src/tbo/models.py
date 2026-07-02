@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from datetime import datetime
 from enum import Enum
-from typing import Optional
 
 from pydantic import BaseModel, Field
 
@@ -33,8 +32,8 @@ class AgentBudget(BaseModel):
 
     agent_id: str
     workspace: str
-    max_tokens: Optional[int] = None
-    max_cost_usd: Optional[float] = None
+    max_tokens: int | None = None
+    max_cost_usd: float | None = None
     period: BudgetPeriod = BudgetPeriod.DAILY
     used_tokens: int = 0
     used_cost_usd: float = 0.0
@@ -55,10 +54,10 @@ class UsageRecord(BaseModel):
     total_tokens: int
     estimated_cost_usd: float
     latency_ms: float
-    policy_applied: Optional[str] = None
-    model_routed_to: Optional[str] = None  # If rerouted by policy
-    budget_remaining_tokens: Optional[int] = None
-    budget_remaining_usd: Optional[float] = None
+    policy_applied: str | None = None
+    model_routed_to: str | None = None  # If rerouted by policy
+    budget_remaining_tokens: int | None = None
+    budget_remaining_usd: float | None = None
 
 
 class ModelPricing(BaseModel):
@@ -69,8 +68,8 @@ class ModelPricing(BaseModel):
     input_per_million: float
     output_per_million: float
     # Cache-related pricing
-    cache_write_per_million: Optional[float] = None
-    cache_read_per_million: Optional[float] = None
+    cache_write_per_million: float | None = None
+    cache_read_per_million: float | None = None
 
 
 # Pricing table — updated as of 2026. SDK ships with defaults, user can override.

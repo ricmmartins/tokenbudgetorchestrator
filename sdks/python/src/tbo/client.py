@@ -147,7 +147,13 @@ class TBOClient:
 
         # 3. Check budget (with safety margin for output tokens)
         estimated_total = estimated_input + int(max_tokens * 0.5)  # Conservative estimate
-        self._budget_manager.check_budget(self._workspace, self._agent_id, estimated_total)
+        budget_result = self._budget_manager.check_budget(
+            self._workspace, self._agent_id, estimated_total
+        )
+
+        # If budget says fallback, override model selection
+        if budget_result.fallback_model:
+            final_model = budget_result.fallback_model
 
         return final_model, estimated_input
 

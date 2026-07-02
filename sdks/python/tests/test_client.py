@@ -82,6 +82,26 @@ class TestTBOClientPreCall:
         with pytest.raises(BudgetExceededError):
             client._pre_call("claude-sonnet-4-20250514", messages, {}, 1024)
 
+    @patch("tbo.client.TBOClient._create_provider_client")
+    def test_pre_call_fallback_when_budget_exceeded(self, mock_create):
+        mock_create.return_value = MagicMock()
+        client = TBOClient(
+            provider="anthropic",
+            api_key="test-key",
+            workspace="ws",
+            agent_id="agent-1",
+            budget=BudgetConfig(
+                max_tokens=100,
+                on_exceed="fallback",
+                fallback_model="claude-haiku-3-5-20241022",
+            ),
+        )
+
+        messages = [{"role": "user", "content": "A" * 2000}]
+
+        final_model, _ = client._pre_call("claude-sonnet-4-20250514", messages, {}, 1024)
+        assert final_model == "claude-haiku-3-5-20241022"
+
 
 class TestTBOClientPostCall:
     @patch("tbo.client.TBOClient._create_provider_client")

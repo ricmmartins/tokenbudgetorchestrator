@@ -2,13 +2,23 @@
 
 from __future__ import annotations
 
+import logging
 import threading
 import time
+from enum import Enum
 from typing import Optional
 
 from pydantic import BaseModel, Field
 
 from tbo.models import AgentBudget, BudgetPeriod, BudgetStatus
+
+logger = logging.getLogger("tbo.budget")
+
+
+class OnExceed(str, Enum):
+    BLOCK = "block"
+    FALLBACK = "fallback"
+    ALERT = "alert"
 
 
 class BudgetConfig(BaseModel):
@@ -21,8 +31,17 @@ class BudgetConfig(BaseModel):
     # Safety margin for output token estimation uncertainty
     safety_margin: float = Field(default=0.15, ge=0.0, le=0.5)
     # What to do when budget is exceeded
-    on_exceed: str = "block"  # "block" | "fallback" | "alert"
+    on_exceed: OnExceed = OnExceed.BLOCK
     fallback_model: Optional[str] = None
+
+
+class BudgetCheckResult(BaseModel):
+    """Result of a budget check — tells caller what to do."""
+
+    allowed: bool = True
+    budget: AgentBudget
+    fallback_model: Optional[str] = None
+    reason: Optional[str] = None
 
 
 class BudgetExceededError(Exception):
@@ -49,6 +68,7 @@ class BudgetManager:
 
     def __init__(self):
         self._budgets: dict[str, AgentBudget] = {}
+        self._configs: dict[str, BudgetConfig] = {}
         self._lock = threading.Lock()
         self._period_start: dict[str, float] = {}
 
@@ -65,56 +85,91 @@ class BudgetManager:
         )
         with self._lock:
             self._budgets[key] = budget
+            self._configs[key] = config
             self._period_start[key] = time.time()
         return budget
 
     def check_budget(
         self, workspace: str, agent_id: str, estimated_input_tokens: int
-    ) -> AgentBudget:
+    ) -> BudgetCheckResult:
         """Check if agent has budget for a call. Resets if period expired.
 
-        Args:
-            workspace: Workspace identifier
-            agent_id: Agent identifier
-            estimated_input_tokens: Estimated tokens for the call
-
         Returns:
-            Current budget state
+            BudgetCheckResult with allowed=True/False and optional fallback_model.
 
         Raises:
-            BudgetExceededError: If call would exceed budget and on_exceed="block"
+            BudgetExceededError: Only if on_exceed="block" and budget is exceeded.
         """
         key = f"{workspace}:{agent_id}"
         with self._lock:
             budget = self._budgets.get(key)
             if budget is None:
-                # No budget configured = unlimited
-                return AgentBudget(agent_id=agent_id, workspace=workspace)
+                return BudgetCheckResult(
+                    allowed=True,
+                    budget=AgentBudget(agent_id=agent_id, workspace=workspace),
+                )
+
+            config = self._configs.get(key)
 
             # Check if period has rolled over
             self._maybe_reset_period(key, budget)
+
+            exceeded = False
+            reason = None
 
             # Check token budget
             if budget.max_tokens is not None:
                 remaining = budget.max_tokens - budget.used_tokens
                 if estimated_input_tokens > remaining:
-                    budget.status = BudgetStatus.EXCEEDED
-                    raise BudgetExceededError(agent_id, budget, estimated_input_tokens)
-
-                usage_ratio = budget.used_tokens / budget.max_tokens
-                if usage_ratio >= budget.warning_threshold:
-                    budget.status = BudgetStatus.WARNING
+                    exceeded = True
+                    reason = (
+                        f"Requested ~{estimated_input_tokens} tokens, "
+                        f"remaining {remaining} in {budget.period.value} period"
+                    )
+                else:
+                    usage_ratio = budget.used_tokens / budget.max_tokens
+                    if usage_ratio >= budget.warning_threshold:
+                        budget.status = BudgetStatus.WARNING
 
             # Check cost budget
-            if budget.max_cost_usd is not None:
+            if not exceeded and budget.max_cost_usd is not None:
                 usage_ratio = budget.used_cost_usd / budget.max_cost_usd
                 if usage_ratio >= 1.0:
-                    budget.status = BudgetStatus.EXCEEDED
-                    raise BudgetExceededError(agent_id, budget, estimated_input_tokens)
+                    exceeded = True
+                    reason = (
+                        f"Cost budget exhausted: ${budget.used_cost_usd:.2f} / "
+                        f"${budget.max_cost_usd:.2f}"
+                    )
                 elif usage_ratio >= budget.warning_threshold:
                     budget.status = BudgetStatus.WARNING
 
-            return budget
+            if not exceeded:
+                return BudgetCheckResult(allowed=True, budget=budget)
+
+            # Budget exceeded — decide action based on config
+            budget.status = BudgetStatus.EXCEEDED
+
+            if config and config.on_exceed == OnExceed.FALLBACK and config.fallback_model:
+                logger.info(
+                    f"Budget exceeded for '{agent_id}', falling back to {config.fallback_model}"
+                )
+                return BudgetCheckResult(
+                    allowed=True,
+                    budget=budget,
+                    fallback_model=config.fallback_model,
+                    reason=reason,
+                )
+
+            if config and config.on_exceed == OnExceed.ALERT:
+                logger.warning(f"Budget exceeded for '{agent_id}': {reason}")
+                return BudgetCheckResult(
+                    allowed=True,
+                    budget=budget,
+                    reason=reason,
+                )
+
+            # Default: block
+            raise BudgetExceededError(agent_id, budget, estimated_input_tokens)
 
     def record_usage(
         self, workspace: str, agent_id: str, tokens_used: int, cost_usd: float

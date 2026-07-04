@@ -1,5 +1,5 @@
 [project]
-name = "tbo"
+name = "token-budget-orchestrator"
 version = "0.1.0"
 description = "Token Budget Orchestrator — Active budget governance for multi-agent LLM systems"
 readme = "README.md"

@@ -1,15 +1,15 @@
 # Token Budget Orchestrator (TBO)
 
-**Engine de orquestração e governança de budget de tokens para sistemas multi-agente LLM.**
+**Active budget orchestration and governance engine for multi-agent LLM systems.**
 
-> Enquanto ferramentas como Helicone e Langfuse mostram o que aconteceu com seu budget, o TBO decide o que vai acontecer — aplicando políticas antes de cada chamada, não depois.
+> While tools like Helicone and Langfuse show you what happened to your budget, TBO decides what will happen — enforcing policies before each call, not after.
 
 ## Core Capabilities
 
-- **Budget por agente** — Limite de tokens/custo por agente, projeto ou usuário
-- **Roteamento por política** — "Se task_type=rascunho → use haiku; se task_type=revisão → use sonnet"
-- **Realocação dinâmica** — Agente A esgotou? Redistribui budget do Agente C
-- **Zero data leakage** — Prompts NUNCA saem da infra do cliente. Apenas metadados.
+- **Budget per agent** — Set token/cost limits per agent, project, or user
+- **Policy-based routing** — "If task_type=draft, use Haiku; if task_type=review, use Sonnet"
+- **Dynamic reallocation** — Agent A exhausted its budget? Redistribute from Agent C
+- **Zero data leakage** — Prompts NEVER leave your infrastructure. Only metadata.
 
 ## Quick Start (Python SDK)
 

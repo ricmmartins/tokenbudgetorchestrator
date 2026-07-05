@@ -6,8 +6,7 @@ import pytest
 
 from tbo.budget import BudgetConfig, BudgetExceededError
 from tbo.client import TBOClient
-from tbo.models import BudgetPeriod
-from tbo.policy import Policy, PolicyAction, RoutingRule
+from tbo.policy import Policy, RoutingRule
 
 
 class TestTBOClientInit:

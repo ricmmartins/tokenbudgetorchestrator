@@ -102,6 +102,7 @@ class TestEndToEndFlow:
                 max_tokens=1_000,
                 on_exceed=OnExceed.FALLBACK,
                 fallback_model="claude-haiku-3-5-20241022",
+                safety_margin=0.5,
             ),
         )
 

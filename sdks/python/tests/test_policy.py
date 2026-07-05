@@ -1,6 +1,6 @@
 """Tests for policy evaluation."""
 
-from tbo.policy import Policy, PolicyAction, PolicyDecision, PolicyEvaluator, RoutingRule
+from tbo.policy import Policy, PolicyAction, PolicyEvaluator, RoutingRule
 
 
 class TestPolicyEvaluator:

@@ -90,6 +90,11 @@ class RedisBudgetStore:
         local add_cost = tonumber(ARGV[2])
         local period_ttl = tonumber(ARGV[3])
 
+        -- Reject negative values (budget bypass attempt)
+        if add_tokens <= 0 or add_cost < 0 then
+            return {'error', '0', '0', '0', '0', ''}
+        end
+
         -- Get config
         local max_tokens = tonumber(redis.call('HGET', config_key, 'max_tokens') or '0')
         local max_cost = tonumber(redis.call('HGET', config_key, 'max_cost_micros') or '0')

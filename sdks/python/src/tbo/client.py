@@ -145,8 +145,14 @@ class TBOClient:
 
         final_model = decision.routed_model
 
-        # 3. Check budget (with safety margin for output tokens)
-        estimated_total = estimated_input + int(max_tokens * 0.5)  # Conservative estimate
+        # 3. Check budget (with safety margin for output token estimation uncertainty)
+        safety_margin = 0.5
+        budget_config = self._budget_manager._configs.get(
+            self._budget_manager._make_key(self._workspace, self._agent_id)
+        )
+        if budget_config and budget_config.safety_margin:
+            safety_margin = budget_config.safety_margin
+        estimated_total = estimated_input + int(max_tokens * safety_margin)
         budget_result = self._budget_manager.check_budget(
             self._workspace, self._agent_id, estimated_total
         )
@@ -268,7 +274,10 @@ class _MessagesAPI:
         latency_ms = (time.perf_counter() - start) * 1000
 
         # Post-call: record usage + telemetry
-        decision = self._tbo._policy_evaluator.evaluate(model, call_metadata)
+        merged_metadata = {**self._tbo._default_metadata, **call_metadata}
+        merged_metadata["agent_id"] = self._tbo._agent_id
+        merged_metadata["original_model"] = model
+        decision = self._tbo._policy_evaluator.evaluate(model, merged_metadata)
         self._tbo._post_call(
             model=model,
             routed_model=final_model,

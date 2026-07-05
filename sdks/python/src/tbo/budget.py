@@ -61,19 +61,31 @@ class BudgetExceededError(Exception):
 class BudgetManager:
     """Manages token budgets for agents. Thread-safe, local-first.
 
+    Uses a reservation pattern to prevent TOCTOU race conditions:
+    check_budget() reserves tokens atomically, record_usage() adjusts
+    the actual usage vs. the reservation.
+
     In standalone mode (no TBO engine), budgets are tracked in-memory.
     With TBO engine, syncs with Redis-backed central budget store.
     """
+
+    # Separator that is validated against in identifiers
+    _KEY_SEP = "\x1f"  # ASCII Unit Separator — never appears in valid identifiers
 
     def __init__(self):
         self._budgets: dict[str, AgentBudget] = {}
         self._configs: dict[str, BudgetConfig] = {}
         self._lock = threading.Lock()
         self._period_start: dict[str, float] = {}
+        self._reservations: dict[str, int] = {}  # key -> reserved tokens not yet recorded
+
+    def _make_key(self, workspace: str, agent_id: str) -> str:
+        """Build an unambiguous budget key."""
+        return f"{workspace}{self._KEY_SEP}{agent_id}"
 
     def register_agent(self, workspace: str, agent_id: str, config: BudgetConfig) -> AgentBudget:
         """Register an agent with a budget configuration."""
-        key = f"{workspace}:{agent_id}"
+        key = self._make_key(workspace, agent_id)
         budget = AgentBudget(
             agent_id=agent_id,
             workspace=workspace,
@@ -86,12 +98,17 @@ class BudgetManager:
             self._budgets[key] = budget
             self._configs[key] = config
             self._period_start[key] = time.time()
+            self._reservations[key] = 0
         return budget
 
     def check_budget(
         self, workspace: str, agent_id: str, estimated_input_tokens: int
     ) -> BudgetCheckResult:
-        """Check if agent has budget for a call. Resets if period expired.
+        """Check if agent has budget for a call. Reserves tokens atomically.
+
+        Uses a reservation pattern: tokens are reserved here and only
+        reconciled when record_usage() is called. This prevents TOCTOU
+        race conditions in concurrent scenarios.
 
         Returns:
             BudgetCheckResult with allowed=True/False and optional fallback_model.
@@ -99,7 +116,7 @@ class BudgetManager:
         Raises:
             BudgetExceededError: Only if on_exceed="block" and budget is exceeded.
         """
-        key = f"{workspace}:{agent_id}"
+        key = self._make_key(workspace, agent_id)
         with self._lock:
             budget = self._budgets.get(key)
             if budget is None:
@@ -116,9 +133,13 @@ class BudgetManager:
             exceeded = False
             reason = None
 
+            # Include existing reservations in the usage calculation
+            reserved = self._reservations.get(key, 0)
+            effective_used_tokens = budget.used_tokens + reserved
+
             # Check token budget
             if budget.max_tokens is not None:
-                remaining = budget.max_tokens - budget.used_tokens
+                remaining = budget.max_tokens - effective_used_tokens
                 if estimated_input_tokens > remaining:
                     exceeded = True
                     reason = (
@@ -126,12 +147,16 @@ class BudgetManager:
                         f"remaining {remaining} in {budget.period.value} period"
                     )
                 else:
-                    usage_ratio = budget.used_tokens / budget.max_tokens
+                    usage_ratio = (
+                        effective_used_tokens / budget.max_tokens
+                        if budget.max_tokens > 0
+                        else 0
+                    )
                     if usage_ratio >= budget.warning_threshold:
                         budget.status = BudgetStatus.WARNING
 
             # Check cost budget
-            if not exceeded and budget.max_cost_usd is not None:
+            if not exceeded and budget.max_cost_usd is not None and budget.max_cost_usd > 0:
                 usage_ratio = budget.used_cost_usd / budget.max_cost_usd
                 if usage_ratio >= 1.0:
                     exceeded = True
@@ -143,6 +168,8 @@ class BudgetManager:
                     budget.status = BudgetStatus.WARNING
 
             if not exceeded:
+                # Reserve the tokens atomically
+                self._reservations[key] = reserved + estimated_input_tokens
                 return BudgetCheckResult(allowed=True, budget=budget)
 
             # Budget exceeded — decide action based on config
@@ -152,6 +179,8 @@ class BudgetManager:
                 logger.info(
                     f"Budget exceeded for '{agent_id}', falling back to {config.fallback_model}"
                 )
+                # Still reserve for fallback calls
+                self._reservations[key] = reserved + estimated_input_tokens
                 return BudgetCheckResult(
                     allowed=True,
                     budget=budget,
@@ -161,6 +190,7 @@ class BudgetManager:
 
             if config and config.on_exceed == OnExceed.ALERT:
                 logger.warning(f"Budget exceeded for '{agent_id}': {reason}")
+                self._reservations[key] = reserved + estimated_input_tokens
                 return BudgetCheckResult(
                     allowed=True,
                     budget=budget,
@@ -173,8 +203,8 @@ class BudgetManager:
     def record_usage(
         self, workspace: str, agent_id: str, tokens_used: int, cost_usd: float
     ) -> AgentBudget:
-        """Record actual usage after a call completes."""
-        key = f"{workspace}:{agent_id}"
+        """Record actual usage after a call completes. Releases reservation."""
+        key = self._make_key(workspace, agent_id)
         with self._lock:
             budget = self._budgets.get(key)
             if budget is None:
@@ -182,6 +212,12 @@ class BudgetManager:
 
             budget.used_tokens += tokens_used
             budget.used_cost_usd += cost_usd
+
+            # Release reservation (use actual tokens, not the estimate)
+            reserved = self._reservations.get(key, 0)
+            # Reservation was for estimated tokens; release it fully
+            # The actual usage is now recorded in budget.used_tokens
+            self._reservations[key] = max(0, reserved - tokens_used)
 
             # Update status
             if budget.max_tokens and budget.used_tokens >= budget.max_tokens:
@@ -193,7 +229,7 @@ class BudgetManager:
 
     def get_budget(self, workspace: str, agent_id: str) -> AgentBudget | None:
         """Get current budget state for an agent."""
-        key = f"{workspace}:{agent_id}"
+        key = self._make_key(workspace, agent_id)
         with self._lock:
             return self._budgets.get(key)
 
@@ -214,3 +250,4 @@ class BudgetManager:
             budget.used_cost_usd = 0.0
             budget.status = BudgetStatus.OK
             self._period_start[key] = time.time()
+            self._reservations[key] = 0

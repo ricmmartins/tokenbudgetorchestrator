@@ -5,22 +5,28 @@
 [![CI](https://github.com/ricmmartins/tokenbudgetorchestrator/actions/workflows/ci.yml/badge.svg)](https://github.com/ricmmartins/tokenbudgetorchestrator/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-**Active budget orchestration engine for multi-agent LLM systems.**
+Most LLM observability tools (Helicone, Langfuse, Datadog) show you what already happened. You find out about the budget blowout at the end of the month. TBO sits between your code and the LLM provider and makes decisions *before* each call: is the agent over budget? Should the call be routed to a cheaper model? Should it be blocked entirely?
 
-> Helicone and Langfuse show you what happened to your budget. TBO decides what **will** happen — enforcing policies before each call, not after.
+## Why this exists
 
-## The Problem
+Multi-agent systems burn tokens in ways that are hard to predict. Agent-to-agent communication alone generates 3-5x more tokens than a single-agent workflow doing the same job. I kept seeing teams run multi-agent pipelines without any guardrails, then scramble when the invoice came.
 
-Teams running multi-agent LLM systems burn 3-5x more tokens than single-agent workflows. Without active enforcement, budgets are consumed silently — and you only find out at the end of the month.
+TBO gives you a budget per agent with automatic enforcement, so one runaway agent cannot drain the whole project.
 
-## What TBO Does
+## What it does
 
-- **Budget per agent** — Set token/cost limits per agent, project, or user with automatic period resets
-- **Policy-based routing** — `"If task_type=draft → Haiku; if task_type=review → Sonnet"`
-- **Automatic fallback** — Budget exceeded? Auto-route to a cheaper model instead of failing
-- **Zero data leakage** — Prompts NEVER leave your infrastructure. Only metadata (token counts, costs, latency)
+- Set token or cost limits per agent, per project, or per user. Resets happen automatically (hourly, daily, weekly, monthly).
+- Define routing rules: send drafts to Haiku ($0.25/M tokens), send reviews to Sonnet, send final QA to Opus.
+- When an agent hits its limit, TBO can block the call, route it to a cheaper model, or let it through with a warning. Your choice per agent.
+- The SDK runs in your process. Prompts never leave your infrastructure. The optional engine only sees numbers (token counts, costs, latency).
 
-## Quick Start
+## Architecture
+
+![Architecture](docs/architecture.svg)
+
+The SDK wraps your existing Anthropic or OpenAI client. Before each call it counts tokens locally, checks the policy, and enforces the budget. After the call it records actual usage. If you run the optional engine, aggregated metadata (never prompt content) gets sent there for cross-agent dashboards.
+
+## Quick start
 
 ### Python
 
@@ -44,13 +50,12 @@ client = TBOClient(
     ),
 )
 
-# Use exactly like the original Anthropic client
+# Same interface as the Anthropic client. TBO handles the rest.
 response = client.messages.create(
     model="claude-sonnet-4-20250514",
     max_tokens=1024,
     messages=[{"role": "user", "content": "Hello"}],
 )
-# TBO automatically: counts tokens → checks budget → routes to optimal model → records usage
 ```
 
 ### Node.js
@@ -67,7 +72,12 @@ const client = new TBOClient({
   apiKey: "your-key",
   workspace: "my-project",
   agentId: "support-bot",
-  budget: { maxTokens: 100_000, period: "daily", onExceed: "fallback", fallbackModel: "claude-haiku-3-5-20241022" },
+  budget: {
+    maxTokens: 100_000,
+    period: "daily",
+    onExceed: "fallback",
+    fallbackModel: "claude-haiku-3-5-20241022",
+  },
 });
 
 const response = await client.messages.create({
@@ -77,39 +87,9 @@ const response = await client.messages.create({
 });
 ```
 
-## How It Works
+## Policy routing
 
-```
-┌─────────────────────────────────────────────────────────┐
-│                    Your Infrastructure                    │
-│                                                          │
-│  ┌──────────┐    ┌──────────────┐    ┌───────────────┐  │
-│  │ Your App │───▶│  TBO SDK     │───▶│ LLM Provider  │  │
-│  └──────────┘    │ (runs local) │    │ (Anthropic/   │  │
-│                  │              │    │  OpenAI)      │  │
-│                  │ 1. Count     │    └───────────────┘  │
-│                  │ 2. Policy    │                        │
-│                  │ 3. Budget    │                        │
-│                  │ 4. Route     │                        │
-│                  └──────┬───────┘                        │
-│                         │ metadata only                  │
-└─────────────────────────┼───────────────────────────────┘
-                          ▼
-              ┌───────────────────────┐
-              │   TBO Engine          │
-              │   (optional)          │
-              │                       │
-              │ • Dashboard           │
-              │ • Cross-agent budgets │
-              │ • Alerts & reports    │
-              └───────────────────────┘
-```
-
-**Key principle:** The SDK runs entirely in your process. Prompts never leave your infrastructure. The optional engine only receives aggregated metadata (token counts, costs, latency).
-
-## Policy Routing
-
-Define rules to automatically route calls to the right model:
+You can define rules to pick the model based on metadata you pass in:
 
 ```python
 from tbo import Policy, RoutingRule
@@ -126,40 +106,42 @@ policies = [
 ]
 
 client = TBOClient(provider="anthropic", api_key="...", policies=policies)
+
+# This call gets routed to Haiku automatically
+response = client.messages.create(
+    model="claude-sonnet-4-20250514",
+    messages=[{"role": "user", "content": "Write a first draft"}],
+    metadata={"task_type": "draft"},
+)
 ```
 
-## Project Structure
+## Project layout
 
 ```
-tokenbudgetorchestrator/
-├── sdks/python/     # Python SDK — pip install token-budget-orchestrator
-├── sdks/node/       # Node.js SDK — npm install token-budget-orchestrator
-├── engine/          # Policy Engine (FastAPI + Redis) — optional, for multi-process
-├── dashboard/       # Web Dashboard (Next.js)
-└── examples/        # Runnable examples
+sdks/python/     Python SDK (pip install token-budget-orchestrator)
+sdks/node/       Node.js SDK (npm install token-budget-orchestrator)
+engine/          Optional policy engine (FastAPI + Redis), for multi-process setups
+dashboard/       Web dashboard (Next.js), connects to the engine
+examples/        Runnable scripts showing each feature
 ```
 
-## Security
+## Security model
 
-| What we collect | What we NEVER collect |
-|-----------------|----------------------|
-| Token count (in/out) | Prompt content |
-| Model used | Response content |
-| Cost estimate | API keys |
-| Latency (ms) | User data |
-| Agent ID | Business logic |
+The SDK runs locally. It counts tokens in-process using tiktoken, evaluates policies in memory, and calls the LLM provider directly. No proxy. No man-in-the-middle.
 
-The SDK is designed for enterprise use. See [SECURITY.md](SECURITY.md) for details on our trust architecture.
+If you run the optional engine, it receives only metadata: token counts, model name, cost estimate, latency, agent ID, and timestamp. It never receives prompt content, response content, or API keys.
+
+See [SECURITY.md](SECURITY.md) for the full trust architecture.
 
 ## Contributing
 
-We welcome contributions! The SDK is MIT-licensed and open source.
+The SDK is MIT licensed. PRs are welcome.
 
 ```bash
-# Python SDK
+# Python
 cd sdks/python && pip install -e ".[dev]" && pytest
 
-# Node SDK
+# Node
 cd sdks/node && npm install && npm test
 ```
 

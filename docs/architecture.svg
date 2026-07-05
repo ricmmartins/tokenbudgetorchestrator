@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 420" fill="none">
+  <defs>
+    <style>
+      .box { stroke-width: 1.5; rx: 6; }
+      .label { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 13px; fill: #1a1a2e; }
+      .label-sm { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 11px; fill: #555; }
+      .title { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 11px; fill: #888; font-weight: 500; letter-spacing: 0.5px; }
+      .arrow { stroke: #94a3b8; stroke-width: 1.5; marker-end: url(#arrowhead); }
+      .arrow-meta { stroke: #94a3b8; stroke-width: 1.5; stroke-dasharray: 5,4; marker-end: url(#arrowhead); }
+      .zone { stroke: #e2e8f0; stroke-width: 1.5; stroke-dasharray: 6,4; fill: none; rx: 10; }
+      .zone-fill { fill: #f8fafc; rx: 10; }
+    </style>
+    <marker id="arrowhead" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <polygon points="0 0, 8 3, 0 6" fill="#94a3b8"/>
+    </marker>
+  </defs>
+
+  <!-- Your infrastructure zone -->
+  <rect x="20" y="30" width="520" height="230" class="zone-fill"/>
+  <rect x="20" y="30" width="520" height="230" class="zone"/>
+  <text x="40" y="52" class="title">YOUR INFRASTRUCTURE</text>
+
+  <!-- Your App -->
+  <rect x="50" y="80" width="120" height="60" class="box" fill="#e0f2fe" stroke="#7dd3fc"/>
+  <text x="110" y="108" class="label" text-anchor="middle">Your App</text>
+  <text x="110" y="124" class="label-sm" text-anchor="middle">(any language)</text>
+
+  <!-- TBO SDK -->
+  <rect x="230" y="70" width="160" height="80" class="box" fill="#dbeafe" stroke="#60a5fa"/>
+  <text x="310" y="96" class="label" text-anchor="middle" font-weight="600">TBO SDK</text>
+  <text x="310" y="114" class="label-sm" text-anchor="middle">1. Count tokens</text>
+  <text x="310" y="128" class="label-sm" text-anchor="middle">2. Check policy</text>
+  <text x="310" y="142" class="label-sm" text-anchor="middle">3. Enforce budget</text>
+
+  <!-- LLM Provider -->
+  <rect x="450" y="80" width="120" height="60" class="box" fill="#fef3c7" stroke="#fbbf24"/>
+  <text x="510" y="104" class="label" text-anchor="middle">Anthropic /</text>
+  <text x="510" y="120" class="label-sm" text-anchor="middle">OpenAI</text>
+
+  <!-- Arrows in zone -->
+  <line x1="170" y1="110" x2="225" y2="110" class="arrow"/>
+  <line x1="390" y1="110" x2="445" y2="110" class="arrow"/>
+
+  <!-- Metadata note -->
+  <rect x="240" y="185" width="140" height="40" class="box" fill="#f0fdf4" stroke="#86efac"/>
+  <text x="310" y="202" class="label-sm" text-anchor="middle">metadata only:</text>
+  <text x="310" y="216" class="label-sm" text-anchor="middle">counts, cost, latency</text>
+
+  <line x1="310" y1="150" x2="310" y2="180" class="arrow-meta"/>
+
+  <!-- TBO Engine (optional) -->
+  <rect x="230" y="320" width="160" height="70" class="box" fill="#f3e8ff" stroke="#c084fc"/>
+  <text x="310" y="346" class="label" text-anchor="middle">TBO Engine</text>
+  <text x="310" y="362" class="label-sm" text-anchor="middle">(optional, self-hosted)</text>
+  <text x="310" y="376" class="label-sm" text-anchor="middle">Dashboard + Alerts</text>
+
+  <line x1="310" y1="225" x2="310" y2="315" class="arrow-meta"/>
+
+  <!-- Labels on arrows -->
+  <text x="197" y="100" class="label-sm" text-anchor="middle">call</text>
+  <text x="418" y="100" class="label-sm" text-anchor="middle">call</text>
+
+  <!-- Key point callout -->
+  <rect x="560" y="80" width="220" height="70" rx="8" fill="#fef2f2" stroke="#fca5a5" stroke-width="1"/>
+  <text x="670" y="102" class="label-sm" text-anchor="middle" fill="#991b1b">Prompts never leave</text>
+  <text x="670" y="118" class="label-sm" text-anchor="middle" fill="#991b1b">your infrastructure.</text>
+  <text x="670" y="138" class="label-sm" text-anchor="middle" fill="#991b1b">Only numbers go out.</text>
+</svg>

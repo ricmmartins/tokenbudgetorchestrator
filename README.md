@@ -92,15 +92,15 @@ const response = await client.messages.create({
 You can define rules to pick the model based on metadata you pass in:
 
 ```python
-from tbo import Policy, RoutingRule
+from tbo import TBOClient, Policy, RoutingRule
 
 policies = [
     Policy(
         name="cost-optimization",
         rules=[
-            RoutingRule(conditions={"task_type": "draft"}, route_to="claude-haiku-3-5-20241022"),
-            RoutingRule(conditions={"task_type": "review"}, route_to="claude-sonnet-4-20250514"),
-            RoutingRule(conditions={"task_type": "final"}, route_to="claude-opus-4-20250514"),
+            RoutingRule(name="drafts-use-haiku", condition={"task_type": "draft"}, target_model="claude-haiku-3-5-20241022"),
+            RoutingRule(name="reviews-use-sonnet", condition={"task_type": "review"}, target_model="claude-sonnet-4-20250514"),
+            RoutingRule(name="final-use-opus", condition={"task_type": "final"}, target_model="claude-opus-4-20250514"),
         ],
     )
 ]

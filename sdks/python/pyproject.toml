@@ -20,17 +20,17 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 
-[project.urls]
-Homepage = "https://github.com/ricmmartins/tokenbudgetorchestrator"
-Repository = "https://github.com/ricmmartins/tokenbudgetorchestrator"
-Issues = "https://github.com/ricmmartins/tokenbudgetorchestrator/issues"
-Documentation = "https://github.com/ricmmartins/tokenbudgetorchestrator#quick-start"
-
 dependencies = [
     "httpx>=0.25.0",
     "pydantic>=2.0",
     "tiktoken>=0.5.0",
 ]
+
+[project.urls]
+Homepage = "https://github.com/ricmmartins/tokenbudgetorchestrator"
+Repository = "https://github.com/ricmmartins/tokenbudgetorchestrator"
+Issues = "https://github.com/ricmmartins/tokenbudgetorchestrator/issues"
+Documentation = "https://github.com/ricmmartins/tokenbudgetorchestrator#quick-start"
 
 [project.optional-dependencies]
 anthropic = ["anthropic>=0.30.0"]

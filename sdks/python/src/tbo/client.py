@@ -22,7 +22,7 @@ Usage:
 from __future__ import annotations
 
 import time
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from typing import Any
 
 from tbo.budget import BudgetConfig, BudgetExceededError, BudgetManager
@@ -190,7 +190,7 @@ class TBOClient:
         # Emit telemetry (async, never blocks)
         budget = self._budget_manager.get_budget(self._workspace, self._agent_id)
         record = UsageRecord(
-            timestamp=datetime.now(UTC),
+            timestamp=datetime.now(timezone.utc),
             workspace=self._workspace,
             agent_id=self._agent_id,
             provider=self._provider,

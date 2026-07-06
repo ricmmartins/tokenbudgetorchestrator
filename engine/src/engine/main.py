@@ -99,7 +99,7 @@ async def ingest_telemetry(records: list[dict], _key=Depends(require_api_key)):
     """Receive telemetry from SDKs. Metadata only — never prompt content."""
     if len(records) > 1000:
         raise HTTPException(status_code=400, detail="Max 1000 records per batch")
-    # TODO: persist to PostgreSQL for historical queries
+    # Storage: PostgreSQL persistence planned for v0.2
     return {"accepted": len(records)}
 
 
@@ -170,7 +170,7 @@ async def reset_budget(workspace: str, agent_id: str, _key=Depends(require_api_k
 async def create_policy(workspace: str, policy: dict, _key=Depends(require_api_key)):
     """Create or update a policy for a workspace."""
     validate_identifier(workspace, "workspace")
-    # TODO: store policy in PostgreSQL, push to connected SDKs
+    # Storage: policy persistence planned for v0.2
     return {"status": "created", "policy": policy}
 
 

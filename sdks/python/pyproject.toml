@@ -1,14 +1,14 @@
 [project]
 name = "token-budget-orchestrator"
 version = "0.1.0"
-description = "Token Budget Orchestrator — Active budget governance for multi-agent LLM systems"
+description = "Budget enforcement and policy routing for multi-agent LLM systems"
 readme = "README.md"
 license = { text = "MIT" }
 requires-python = ">=3.10"
 authors = [
     { name = "Ricardo Martins" }
 ]
-keywords = ["llm", "tokens", "budget", "orchestration", "multi-agent", "anthropic", "openai"]
+keywords = ["llm", "tokens", "budget", "orchestration", "multi-agent", "anthropic", "openai", "cost", "governance"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
@@ -19,6 +19,12 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
+
+[project.urls]
+Homepage = "https://github.com/ricmmartins/tokenbudgetorchestrator"
+Repository = "https://github.com/ricmmartins/tokenbudgetorchestrator"
+Issues = "https://github.com/ricmmartins/tokenbudgetorchestrator/issues"
+Documentation = "https://github.com/ricmmartins/tokenbudgetorchestrator#quick-start"
 
 dependencies = [
     "httpx>=0.25.0",

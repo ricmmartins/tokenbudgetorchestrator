@@ -1,17 +1,26 @@
 {
   "name": "token-budget-orchestrator",
   "version": "0.1.0",
-  "description": "Token Budget Orchestrator — Active budget governance for multi-agent LLM systems",
+  "description": "Budget enforcement and policy routing for multi-agent LLM systems",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "files": ["dist/**/*.js", "dist/**/*.d.ts", "dist/**/*.js.map", "dist/**/*.d.ts.map"],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ricmmartins/tokenbudgetorchestrator.git",
+    "directory": "sdks/node"
+  },
+  "homepage": "https://github.com/ricmmartins/tokenbudgetorchestrator",
+  "bugs": "https://github.com/ricmmartins/tokenbudgetorchestrator/issues",
   "scripts": {
     "build": "tsc",
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "eslint src/",
-    "clean": "rm -rf dist/"
+    "clean": "rm -rf dist/",
+    "prepublishOnly": "npm run build"
   },
-  "keywords": ["llm", "tokens", "budget", "orchestration", "multi-agent", "anthropic", "openai"],
+  "keywords": ["llm", "tokens", "budget", "orchestration", "multi-agent", "anthropic", "openai", "cost", "governance"],
   "author": "Ricardo Martins",
   "license": "MIT",
   "devDependencies": {

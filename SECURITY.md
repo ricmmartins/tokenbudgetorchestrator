@@ -1,45 +1,40 @@
 # Security
 
-## Trust Architecture
+## Trust architecture
 
-Token Budget Orchestrator is designed with a **zero-trust data model**:
+Token Budget Orchestrator uses a zero-trust data model. The SDK runs in your process, and prompts never leave your infrastructure.
 
-### SDK (Local)
-- Runs entirely in your process/infrastructure
-- Prompts and responses **never** leave your environment
-- API keys are passed directly to the LLM provider — never stored or transmitted by TBO
-- Budget enforcement and policy evaluation happen locally (< 5ms overhead)
+### SDK (local)
 
-### Engine (Optional, Self-hostable)
-- Only receives **aggregated metadata**: token counts, costs, latency, model used
+- Runs entirely in your process
+- Prompts and responses stay in your environment
+- API keys pass directly to the LLM provider, never stored or transmitted by TBO
+- Budget enforcement and policy evaluation happen locally (~5ms overhead)
+
+### Engine (optional, self-hosted)
+
+- Receives only aggregated metadata: token counts, costs, latency, model name
 - Never receives prompt content, response content, or API keys
 - Authenticated via API key (`X-TBO-API-Key` header)
-- CORS restricted to configured origins only
-- All identifiers validated (workspace, agent_id) to prevent injection
+- CORS restricted to configured origins
+- All identifiers validated against `[a-zA-Z0-9_\-\.]+`
 
-### What We Collect (Telemetry)
-| Collected | NOT Collected |
-|-----------|---------------|
-| Token count (input/output) | Prompt content |
-| Model name | Response content |
-| Estimated cost (USD) | API keys |
-| Latency (ms) | User PII |
-| Agent ID | Business data |
-| Timestamp | File contents |
+### What the engine sees vs. what it does not
 
-## Reporting Vulnerabilities
+Collected: token count (input/output), model name, estimated cost, latency, agent ID, timestamp.
 
-If you discover a security vulnerability, please report it responsibly:
+Not collected: prompt content, response content, API keys, user PII, business data, file contents.
 
-1. **Do NOT** open a public GitHub issue
-2. Email: security@tokenbudgetorchestrator.dev (or open a private security advisory on GitHub)
-3. Include: description, reproduction steps, impact assessment
-4. We will acknowledge within 48 hours and provide a fix timeline
+## Reporting vulnerabilities
 
-## Security Controls
+If you find a security issue, open a [private security advisory](https://github.com/ricmmartins/tokenbudgetorchestrator/security/advisories/new) on this repository. Include a description, steps to reproduce, and your assessment of impact.
 
-- **Input validation**: All path parameters validated against `[a-zA-Z0-9_\-\.]+`
-- **Budget integrity**: Lua scripts reject negative values; reservation pattern prevents TOCTOU races
-- **Authentication**: API key required for all state-modifying engine endpoints
-- **No secrets in code**: All sensitive config via environment variables
-- **Dependency minimalism**: Minimal dependency tree to reduce supply chain risk
+You can also email ricmmartins@gmail.com directly.
+
+## Security controls
+
+- Input validation: all path parameters match `[a-zA-Z0-9_\-\.]+`, max 128 chars
+- Budget integrity: Lua scripts reject negative values; reservation pattern prevents race conditions
+- Authentication: API key required for all state-modifying engine endpoints
+- No secrets in code: all sensitive config via environment variables
+- Minimal dependencies: small dependency tree to reduce supply chain risk

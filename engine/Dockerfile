@@ -3,9 +3,12 @@ FROM python:3.12-slim
 WORKDIR /app
 
 COPY pyproject.toml .
-RUN pip install --no-cache-dir .
+RUN pip install --no-cache-dir . \
+    && adduser --disabled-password --gecos "" appuser
 
 COPY src/ src/
+
+USER appuser
 
 EXPOSE 8000
 

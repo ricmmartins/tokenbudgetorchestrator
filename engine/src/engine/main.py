@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hmac
 import os
 import re
 from typing import Annotated, Optional
@@ -39,7 +40,7 @@ async def require_api_key(api_key: str = Security(_api_key_header)):
     if not expected_key:
         # No key configured = open access (dev mode)
         return None
-    if not api_key or api_key != expected_key:
+    if not api_key or not hmac.compare_digest(api_key, expected_key):
         raise HTTPException(status_code=401, detail="Invalid or missing API key")
     return api_key
 

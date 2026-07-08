@@ -26,6 +26,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from tbo.budget import BudgetConfig, BudgetExceededError, BudgetManager
+from tbo.drift import DriftConfig, DriftDetector
 from tbo.models import DEFAULT_PRICING, ModelPricing, Provider, UsageRecord
 from tbo.policy import Policy, PolicyAction, PolicyEvaluator
 from tbo.telemetry import TelemetryCollector
@@ -50,6 +51,8 @@ class TBOClient:
         engine_url: str | None = None,
         metadata: dict | None = None,
         pricing: list[ModelPricing] | None = None,
+        drift: DriftConfig | None = None,
+        on_drift: callable | None = None,
         **provider_kwargs: Any,
     ):
         """Initialize TBO wrapper.
@@ -64,6 +67,8 @@ class TBOClient:
             engine_url: Optional TBO engine URL for telemetry aggregation
             metadata: Default metadata attached to every call (task_type, etc.)
             pricing: Custom pricing table (defaults to built-in)
+            drift: Drift detection config (window size, sensitivity, cooldown)
+            on_drift: Callback fired when token consumption drift is detected
             **provider_kwargs: Additional args passed to the underlying client
         """
         self._provider = Provider(provider)
@@ -76,6 +81,10 @@ class TBOClient:
         self._budget_manager = BudgetManager()
         self._policy_evaluator = PolicyEvaluator()
         self._telemetry = TelemetryCollector(engine_url=engine_url)
+        self._drift_detector: DriftDetector | None = None
+
+        if drift:
+            self._drift_detector = DriftDetector(config=drift, on_drift=on_drift)
 
         # Build pricing lookup
         pricing_list = pricing or DEFAULT_PRICING
@@ -186,6 +195,10 @@ class TBOClient:
 
         # Record against budget
         self._budget_manager.record_usage(self._workspace, self._agent_id, total_tokens, cost)
+
+        # Check for drift (token consumption trending up)
+        if self._drift_detector:
+            self._drift_detector.record(self._workspace, self._agent_id, total_tokens)
 
         # Emit telemetry (async, never blocks)
         budget = self._budget_manager.get_budget(self._workspace, self._agent_id)

@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.2.0] — 2026-07-08
+
+### Added
+- **Drift detection**: Proactive alerting when an agent's token consumption trends upward before hitting the budget wall
+  - `DriftConfig`: configure window size, sensitivity threshold, cooldown between alerts
+  - `DriftDetector`: split-window comparison (recent avg vs. baseline avg) with <1ms overhead per call
+  - `DriftAlert`: structured alert with percentage increase, averages, and timestamps
+  - `on_drift` callback on `TBOClient` for real-time notifications
+  - `get_stats()` for programmatic access to per-agent consumption stats
+  - `reset()` to clear tracking after intentional changes (e.g., prompt template deploys)
+- Example: `05_drift_detection.py`
+
 ## [0.1.0] — 2026-07-02
 
 ### Added

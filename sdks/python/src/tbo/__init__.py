@@ -2,6 +2,7 @@
 
 from tbo.budget import BudgetCheckResult, BudgetConfig, BudgetExceededError, BudgetManager, OnExceed
 from tbo.client import TBOClient
+from tbo.drift import DriftAlert, DriftConfig, DriftDetector
 from tbo.models import AgentBudget, UsageRecord
 from tbo.policy import Policy, PolicyAction, RoutingRule
 
@@ -14,6 +15,9 @@ __all__ = [
     "BudgetCheckResult",
     "BudgetExceededError",
     "OnExceed",
+    "DriftConfig",
+    "DriftDetector",
+    "DriftAlert",
     "Policy",
     "PolicyAction",
     "RoutingRule",
